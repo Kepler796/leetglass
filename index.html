@@ -105,6 +105,9 @@ input::placeholder,textarea::placeholder{color:var(--ink3)}
 .grow{flex:1}
 .side-foot{display:flex;gap:10px;padding:12px 8px 6px;border-top:1px solid rgba(255,255,255,.07)}
 .sstat{flex:1;display:flex;gap:9px;align-items:center}
+.sstat.click{cursor:pointer;transition:.15s;border-radius:10px;padding:4px;margin:-4px}
+.sstat.click:hover{background:rgba(255,255,255,.06)}
+.sstat.click:hover b{color:var(--accent)}
 .sic{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;flex:none}
 .sic.fire{background:rgba(255,180,84,.14);color:var(--accent);box-shadow:0 0 16px rgba(255,180,84,.15)}
 .sic.ok{background:rgba(61,220,151,.13);color:var(--green);box-shadow:0 0 16px rgba(61,220,151,.12)}
@@ -157,7 +160,8 @@ input::placeholder,textarea::placeholder{color:var(--ink3)}
 .rq-row{display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:10px;cursor:pointer;transition:.15s;font-size:12.8px;font-weight:600;color:var(--ink2)}
 .rq-row:hover{background:rgba(255,126,182,.1);color:var(--pink);transform:translateX(2px)}
 .rq-row svg{width:13px;height:13px;color:var(--red);flex:none}
-.risk-pill{display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:99px;background:rgba(255,107,129,.12);border:1px solid rgba(255,107,129,.35);color:#ff92a4;font-size:12.5px;font-weight:650;animation:riskPulse 2.4s ease-in-out infinite}
+.risk-pill{display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:99px;background:rgba(255,107,129,.12);border:1px solid rgba(255,107,129,.35);color:#ff92a4;font-size:12.5px;font-weight:650;animation:riskPulse 2.4s ease-in-out infinite;cursor:pointer;transition:.15s}
+.risk-pill:hover{background:rgba(255,107,129,.2)}
 @keyframes riskPulse{0%,100%{box-shadow:0 0 0 rgba(255,107,129,0)}50%{box-shadow:0 0 18px -2px rgba(255,107,129,.45)}}
 .risk-pill svg{width:14px;height:14px}
 
@@ -404,6 +408,68 @@ body.colcur{cursor:col-resize;user-select:none}
 .toast-act:hover{background:rgba(255,255,255,.3)}
 @keyframes toastIn{from{opacity:0;transform:translateY(12px) scale(.96)}}
 
+/* ============ streak popup + celebration ============ */
+#confetti{position:fixed;inset:0;z-index:90;pointer-events:none}
+#streakRoot .sp-ov{position:fixed;inset:0;z-index:70;background:rgba(9,11,22,.55);backdrop-filter:blur(9px) saturate(1.2);-webkit-backdrop-filter:blur(9px) saturate(1.2);display:grid;place-items:center;padding:20px;animation:fade .2s}
+#streakRoot .sp-ov.out{opacity:0;transition:.18s}
+.sp-card{width:min(430px,94vw);position:relative;text-align:center;background:linear-gradient(165deg,rgba(52,45,92,.94),rgba(26,24,46,.94));backdrop-filter:blur(30px) saturate(1.6);-webkit-backdrop-filter:blur(30px) saturate(1.6);border:1px solid rgba(255,255,255,.15);border-radius:26px;box-shadow:0 40px 90px -20px rgba(0,0,10,.75),0 0 70px -18px rgba(255,180,84,.3),inset 0 1px 0 rgba(255,255,255,.08);padding:28px 26px 24px;animation:spIn .5s cubic-bezier(.18,1,.28,1)}
+@keyframes spIn{from{opacity:0;transform:translateY(26px) scale(.92)}}
+.sp-x{position:absolute;top:12px;right:12px;width:32px;height:32px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:var(--ink2);display:grid;place-items:center;cursor:pointer;transition:.15s}
+.sp-x:hover{background:rgba(255,255,255,.14);color:var(--ink)}
+.sp-x svg{width:15px;height:15px}
+/* the coin */
+.sp-coin{width:100px;height:100px;margin:0 auto 14px;position:relative;perspective:640px}
+.coin-wrap{width:100%;height:100%}
+.coin-inner{position:relative;width:100%;height:100%;transform-style:preserve-3d}
+.coin-face{position:absolute;inset:0;border-radius:50%;backface-visibility:hidden;-webkit-backface-visibility:hidden;background:#ffb454;display:grid;place-items:center;box-shadow:0 12px 28px -8px rgba(255,180,84,.6),inset 0 4px 10px rgba(255,255,255,.5),inset 0 -10px 16px rgba(176,98,10,.38)}
+.coin-face::after{content:'';position:absolute;inset:7px;border-radius:50%;border:2.5px solid rgba(43,28,0,.26)}
+.coin-face svg{width:46px;height:46px;color:#2b1c00;position:relative;z-index:1}
+.coin-back{transform:rotateY(180deg)}
+.coin-ring{position:absolute;inset:-6px;border-radius:50%;border:3px solid var(--accent);opacity:0;pointer-events:none}
+.coin-ring.go{animation:ringPing .75s ease-out}
+@keyframes ringPing{0%{transform:scale(.75);opacity:.9}100%{transform:scale(1.9);opacity:0}}
+.sp-card.celebrate .coin-wrap{animation:coinHop 1.15s cubic-bezier(.32,.6,.28,1) .32s both}
+.sp-card.celebrate .coin-inner{animation:coinSpin 1.15s cubic-bezier(.22,.62,.24,1) .32s both}
+@keyframes coinHop{
+  0%{transform:translateY(0) scale(1)}
+  36%{transform:translateY(-88px) scale(1.04)}
+  62%{transform:translateY(3px) scale(1.14,.86)}
+  70%{transform:translateY(-16px) scale(.98,1.03)}
+  82%{transform:translateY(1px) scale(1.05,.93)}
+  100%{transform:translateY(0) scale(1)}
+}
+@keyframes coinSpin{to{transform:rotateY(1800deg)}}
+.sp-card.open .coin-inner{transform:rotateY(180deg)}
+.sp-card.rm .coin-wrap,.sp-card.rm .coin-inner,.sp-card.rm .sp-circ{animation:none!important}
+/* text */
+.sp-eyebrow{font-size:11px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--accent)}
+.sp-card.done .sp-eyebrow,.sp-card.open .sp-eyebrow{color:var(--ink3)}
+.sp-big{font-size:24px;font-weight:800;letter-spacing:-.03em;margin:6px 0 4px}
+.sp-big b{color:var(--accent);font-size:38px}
+.sp-unit{font-size:21px;color:var(--ink);font-weight:750}
+.sp-unit-solo{font-size:26px;color:var(--ink);font-weight:800;letter-spacing:-.02em}
+.sp-sub{font-size:13px;color:var(--ink2);line-height:1.55;max-width:310px;margin:0 auto}
+.sp-best{display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:5px 12px;border-radius:99px;background:rgba(255,126,182,.14);border:1px solid rgba(255,126,182,.45);color:var(--pink);font-size:11.5px;font-weight:750;animation:slideDown .4s cubic-bezier(.2,.8,.2,1)}
+.sp-best svg{width:13px;height:13px}
+/* 7-day strip */
+.sp-week{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin:20px 0 4px}
+.sp-cell{display:flex;flex-direction:column;align-items:center;gap:6px}
+.sp-dow{font-size:9.5px;font-weight:800;color:var(--ink3);letter-spacing:.05em}
+.sp-circ{position:relative;width:37px;height:37px;border-radius:50%;display:grid;place-items:center;font-size:12.5px;font-weight:800;color:var(--ink2);border:1.5px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);animation:cellPop .5s cubic-bezier(.34,1.45,.64,1) backwards}
+@keyframes cellPop{0%{opacity:0;transform:scale(.2)}70%{opacity:1;transform:scale(1.16)}100%{opacity:1;transform:scale(1)}}
+.sp-circ.done{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);box-shadow:0 6px 16px -5px rgba(255,180,84,.65)}
+.sp-circ.done.tk{box-shadow:0 0 0 2.5px rgba(255,255,255,.75),0 6px 20px -4px rgba(255,180,84,.8)}
+.sp-circ.today-open{border:1.5px dashed var(--accent);color:var(--accent);background:rgba(255,180,84,.07)}
+.sp-circ.today-open::after{content:'';position:absolute;inset:-5px;border-radius:50%;border:1.5px solid rgba(255,180,84,.55);animation:spPulse 1.7s ease-out infinite}
+@keyframes spPulse{0%{transform:scale(.8);opacity:.9}75%{transform:scale(1.3);opacity:0}100%{transform:scale(1.3);opacity:0}}
+.sp-circ.missed{border-color:rgba(255,107,129,.4);background:rgba(255,107,129,.09);color:#ff92a4}
+.sp-circ.future,.sp-circ.neutral{opacity:.4}
+.sp-stats{display:flex;justify-content:center;gap:14px;align-items:center;margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.08);font-size:12px;color:var(--ink3);font-weight:600;flex-wrap:wrap}
+.sp-stats b{color:var(--ink);font-weight:750}
+.sp-stats .vd{width:1px;height:14px;background:rgba(255,255,255,.1)}
+.sp-actions{display:flex;gap:10px;justify-content:center;margin-top:18px;flex-wrap:wrap}
+@media(max-width:380px){.sp-circ{width:32px;height:32px;font-size:11px}}
+
 /* ============ responsive rail ============ */
 @media(max-width:860px){
   .app{padding:10px;gap:10px}
@@ -432,15 +498,15 @@ body.colcur{cursor:col-resize;user-select:none}
 <div id="cursorGlow"></div>
 <div id="toasts"></div>
 <div id="modalRoot"></div>
+<div id="streakRoot"></div>
+<canvas id="confetti"></canvas>
 
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <script>
 /* ================================================================
-   LeetGlass — local-first LeetCode progress tracker (deploy-ready)
-   Sections: Daily Problems · Daily Streak (challenge questions) ·
-             Contests · AI Coach — all local, no servers, no keys.
-   Data lives in localStorage; use Export/Import to back it up and
-   move it between browsers/devices.
+   LeetGlass — local-first LeetCode progress tracker
+   Daily Problems · Daily Streak (with celebration popup) ·
+   Contests · AI Coach — all local, no servers, no keys.
 ================================================================ */
 
 /* ---------- tiny helpers ---------- */
@@ -486,7 +552,7 @@ function load(){
   return null}
 function save(){try{localStorage.setItem(LS_KEY,JSON.stringify(DB))}catch(e){}}
 
-/* ---------- backup: export / import (your data, your hands) ---------- */
+/* ---------- backup: export / import ---------- */
 function exportData(){
   const blob=new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});
   const a=document.createElement('a');
@@ -717,7 +783,6 @@ let DB=load();
 if(!DB||!Array.isArray(DB.problems)){DB=makeSeed();save();}
 DB.problems=DB.problems||[];DB.contests=DB.contests||[];
 if(!Array.isArray(DB.streaks)){
-  /* migrate older saves: only seed if there is existing activity, never into a wiped DB */
   DB.streaks=(DB.problems.length||DB.contests.length)?makeStreakSeed():[];
   save();
 }
@@ -964,6 +1029,111 @@ function typeIn(el,text,ontick){
   else requestAnimationFrame(frame);
 })();
 
+/* ================================================================
+   CONFETTI FX — party poppers, coin burst, celebration confetti
+================================================================ */
+const confettiFX=(function(){
+  const cv=document.getElementById('confetti');
+  if(!cv)return{burst(){},popper(){}};
+  const ctx=cv.getContext('2d');
+  let W=0,H=0;const DPR=Math.min(window.devicePixelRatio||1,2);
+  function resize(){W=innerWidth;H=innerHeight;cv.width=W*DPR;cv.height=H*DPR;cv.style.width=W+'px';cv.style.height=H+'px';ctx.setTransform(DPR,0,0,DPR,0,0)}
+  addEventListener('resize',resize);resize();
+  const COLORS=['#ffb454','#ff9f2e','#ff7eb6','#a78bfa','#2dd4bf','#6cb6ff','#3ddc97','#fff3d6'];
+  const GOLD=['#ffb454','#ff9f2e','#ffd98a','#fff3d6'];
+  const parts=[];let running=false;
+  const R=(a,b)=>a+Math.random()*(b-a);
+  const pick=a=>a[(Math.random()*a.length)|0];
+  function addRect(x,y,a,sp,palette,long){
+    const life=R(90,150);
+    parts.push({t:'r',x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,
+      w:long?3:R(6,10),h:long?R(14,20):R(5,9),
+      rot:R(0,6.28),rs:R(-.22,.22),fl:R(0,6.28),fs:R(.1,.28),
+      sw:R(0,6.28),swf:R(.04,.1),swa:R(.4,1.6),life,max:life,c:pick(palette)});
+  }
+  function addSpark(x,y,a,sp,palette){
+    const life=R(26,46);
+    parts.push({t:'s',x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life,max:life,r:R(1.2,2.4),c:pick(palette||GOLD)});
+  }
+  function kick(){if(!running){running=true;requestAnimationFrame(loop)}}
+  function burst(x,y,o={}){
+    if(parts.length>1200)return;
+    const n=o.count||30,base=(o.angle??-90)*Math.PI/180,spr=(o.spread??360)*Math.PI/180;
+    const s0=o.speed?o.speed[0]:4,s1=o.speed?o.speed[1]:10;
+    for(let i=0;i<n;i++){
+      const a=base+(Math.random()-.5)*spr,sp=R(s0,s1);
+      Math.random()<.15?addSpark(x,y,a,sp,o.palette):addRect(x,y,a,sp,o.palette||COLORS,false);
+    }
+    kick();
+  }
+  function popper(x,y,angleDeg){
+    if(parts.length>1200)return;
+    const a=angleDeg*Math.PI/180;
+    parts.push({t:'c',x,y,a,life:34});
+    const ox=x+Math.cos(a)*34,oy=y+Math.sin(a)*34;
+    for(let i=0;i<50;i++){
+      const aa=a+R(-.42,.42),sp=R(7.5,13);
+      Math.random()<.18?addSpark(ox,oy,aa,sp):addRect(ox,oy,aa,sp,COLORS,Math.random()<.22);
+    }
+    for(let i=0;i<6;i++)addSpark(ox,oy,a+R(-.2,.2),R(11,17));
+    kick();
+  }
+  function loop(){
+    ctx.clearRect(0,0,W,H);
+    for(let i=parts.length-1;i>=0;i--){
+      const p=parts[i];
+      if(p.t==='c'){ /* the popper cone */
+        p.life--;
+        const t=34-p.life;
+        ctx.save();
+        ctx.globalAlpha=Math.min(1,t/3,p.life/14);
+        ctx.translate(p.x,p.y);
+        const tilt=t<8?0:Math.min(.22,(t-8)*.05);
+        const back=t<8?0:Math.min(7,(t-8)*1.2);
+        ctx.rotate(p.a+tilt);
+        ctx.translate(-back,0);
+        ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(36,-13);ctx.lineTo(36,13);ctx.closePath();
+        ctx.fillStyle='#e08a1e';ctx.fill();
+        ctx.clip();
+        ctx.fillStyle='rgba(255,255,255,.85)';
+        ctx.fillRect(10,-14,5,28);ctx.fillRect(20,-14,5,28);ctx.fillRect(30,-14,5,28);
+        ctx.restore();
+        if(p.life<=0)parts.splice(i,1);
+        continue;
+      }
+      if(p.t==='r'){
+        p.vy+=.28;p.vx*=.986;p.vy*=.986;
+        p.x+=p.vx+Math.sin(p.sw+=p.swf)*p.swa*.4;
+        p.y+=p.vy;
+        p.rot+=p.rs;p.fl+=p.fs;p.life--;
+        if(p.life<=0||p.y>H+40){parts.splice(i,1);continue}
+        const al=Math.min(1,p.life/(p.max*.3));
+        const tumble=Math.sin(p.fl);
+        ctx.save();
+        ctx.globalAlpha=al*(tumble<0?.6:1);
+        ctx.translate(p.x,p.y);ctx.rotate(p.rot);
+        ctx.scale(1,Math.max(.18,Math.abs(tumble)));
+        ctx.fillStyle=p.c;
+        ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);
+        ctx.restore();
+      }else{ /* spark */
+        p.vy+=.18;p.vx*=.94;p.vy*=.94;
+        p.x+=p.vx;p.y+=p.vy;p.life--;
+        if(p.life<=0){parts.splice(i,1);continue}
+        const al=p.life/p.max;
+        ctx.globalAlpha=al;ctx.fillStyle=p.c;
+        ctx.beginPath();ctx.arc(p.x,p.y,p.r*al+.4,0,6.283);ctx.fill();
+        ctx.globalAlpha=al*.35;
+        ctx.beginPath();ctx.arc(p.x,p.y,p.r*2.4*al,0,6.283);ctx.fill();
+        ctx.globalAlpha=1;
+      }
+    }
+    if(parts.length)requestAnimationFrame(loop);
+    else{running=false;ctx.clearRect(0,0,W,H)}
+  }
+  return{burst,popper};
+})();
+
 /* ---------- cursor glow orb ---------- */
 (function cursorFX(){
   const g=document.getElementById('cursorGlow');if(!g)return;
@@ -972,7 +1142,7 @@ function typeIn(el,text,ontick){
   document.addEventListener('mousemove',e=>{
     tx=e.clientX;ty=e.clientY;
     if(!seen){seen=true;x=tx;y=ty;g.style.opacity='1'}
-    const hot=e.target.closest?.('button,.pname,.cb,.cday,a,input,select,textarea,.qchip,.rq-row,.seg,.nav-item,.chip.status');
+    const hot=e.target.closest?.('button,.pname,.cb,.cday,a,input,select,textarea,.qchip,.rq-row,.seg,.nav-item,.chip.status,.sp-circ');
     g.classList.toggle('hot',!!hot);
   },{passive:true});
   document.addEventListener('mouseleave',()=>{g.style.opacity='0';seen=false});
@@ -983,13 +1153,140 @@ function typeIn(el,text,ontick){
   })();
 })();
 
-/* ---------- card spotlight (glare follows the mouse inside cards) ---------- */
+/* ---------- card spotlight ---------- */
 document.addEventListener('pointermove',e=>{
   const c=e.target.closest?.('.card');if(!c)return;
   const r=c.getBoundingClientRect();
   c.style.setProperty('--mx',(e.clientX-r.left)+'px');
   c.style.setProperty('--my',(e.clientY-r.top)+'px');
 },{passive:true});
+
+/* ================================================================
+   DAILY-STREAK POPUP — 7-day strip, coin toss, party poppers
+================================================================ */
+const COIN_CHECK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5l5 5L19.5 7"/></svg>';
+const COIN_FLAME='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>';
+
+let celebratedDay=null;
+function longestChainExclToday(){
+  const tk=todayKey(),keys=[...new Set(DB.streaks.filter(q=>q.solved&&q.date!==tk).map(q=>q.date))].sort();
+  let longest=0,run=0;
+  for(let i=0;i<keys.length;i++){if(i>0&&dayDiff(keys[i-1],keys[i])===1)run++;else run=1;if(run>longest)longest=run}
+  return longest;
+}
+/* returns true when the celebration popup fired (call AFTER saving the flip) */
+function maybeCelebrateStreak(item,wasSolved){
+  const tk=todayKey();
+  if(wasSolved||!item.solved||item.date!==tk)return false;
+  if(celebratedDay===tk)return false;
+  if(DB.streaks.some(q=>q.date===tk&&q.solved&&q.id!==item.id))return false;
+  celebratedDay=tk;
+  showStreakPopup(true);
+  return true;
+}
+
+function showStreakPopup(celebrate){
+  const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const tk=todayKey();
+  const solvedDates=new Set(DB.streaks.filter(q=>q.solved).map(q=>q.date));
+  const run=streakRun();
+  const todayDone=solvedDates.has(tk);
+  const ft=streakFirst();
+  const now=new Date(),sun=addDays(now,-now.getDay());
+  const cells=Array.from({length:7},(_,i)=>{
+    const d=addDays(sun,i),k=dkey(d);
+    let cls='future';
+    if(solvedDates.has(k))cls='done';
+    else if(k===tk)cls='today-open';
+    else if(k<tk)cls=(ft&&k>=ft)?'missed':'neutral';
+    return{k,cls,letter:'SMTWTFS'[d.getDay()],num:d.getDate()};
+  });
+  const weekDone=cells.filter(c=>c.cls==='done').length;
+  const totalSolved=DB.streaks.filter(q=>q.solved).length;
+  const mode=celebrate?'celebrate':(todayDone?'done':'open');
+  const newBest=celebrate&&run.cur>longestChainExclToday()&&run.cur>1;
+  const base=RM?0:(celebrate?1150:220),step=RM?0:(celebrate?95:55);
+
+  const bigHTML=run.cur>0
+    ?`<b id="spNum">${RM?run.cur:0}</b><span class="sp-unit">-day streak</span>`
+    :`<span class="sp-unit-solo">${mode==='open'?'Start a streak':'Streak'}</span>`;
+
+  const sub=mode==='celebrate'
+      ?`You solved today\u2019s challenge — the flame stays lit. See you tomorrow for day ${run.cur+1}.`
+    :mode==='done'
+      ?`Today\u2019s challenge is already banked. Day ${run.cur+1} starts tomorrow.`
+    :run.cur>0
+      ?`Solve today\u2019s challenge to keep your ${run.cur}-day run alive.`
+      :'One challenge a day. Solve today\u2019s to light the first flame.';
+
+  const root=$('#streakRoot');
+  root.innerHTML=`
+  <div class="sp-ov" id="spOv">
+    <div class="sp-card ${mode}${RM?' rm':''}" id="spCard" role="dialog" aria-modal="true" aria-label="Daily streak">
+      <button class="sp-x" id="spX" title="Close"><i data-lucide="x"></i></button>
+      <div class="sp-coin">
+        <div class="coin-ring" id="spRing"></div>
+        <div class="coin-wrap"><div class="coin-inner">
+          <div class="coin-face coin-front">${COIN_CHECK}</div>
+          <div class="coin-face coin-back">${COIN_FLAME}</div>
+        </div></div>
+      </div>
+      <div class="sp-eyebrow">${mode==='celebrate'?'Daily challenge complete':'Daily streak'}</div>
+      <div class="sp-big">${bigHTML}</div>
+      <div class="sp-sub">${sub}</div>
+      <div class="sp-best" id="spBest" hidden><i data-lucide="award"></i>New best run!</div>
+      <div class="sp-week">
+        ${cells.map((c,i)=>`<div class="sp-cell"><span class="sp-dow">${c.letter}</span>
+          <span class="sp-circ ${c.cls}${c.k===tk?' tk':''}" style="animation-delay:${base+i*step}ms">${c.num}</span></div>`).join('')}
+      </div>
+      <div class="sp-stats">
+        <span>Best run <b>${run.longest}</b></span><i class="vd"></i>
+        <span>Solved <b>${totalSolved}</b></span><i class="vd"></i>
+        <span>This week <b>${weekDone}/7</b></span>
+      </div>
+      <div class="sp-actions">
+        ${mode==='open'?'<button class="btn primary" id="spGo"><i data-lucide="flame"></i>Solve today\u2019s challenge</button>':''}
+        <button class="btn" id="spOk">${mode==='open'?'Later':'Continue'}</button>
+      </div>
+    </div>
+  </div>`;
+  refreshIcons();
+
+  const ov=$('#spOv',root),card=$('#spCard',root),num=$('#spNum',root),ring=$('#spRing',root),best=$('#spBest',root);
+  const timers=[];
+  const T=(fn,ms)=>{if(!RM)timers.push(setTimeout(fn,ms))};
+
+  function close(){
+    timers.forEach(clearTimeout);
+    document.removeEventListener('keydown',onKey,true);
+    ov.classList.add('out');setTimeout(()=>{root.innerHTML=''},190);
+  }
+  const onKey=e=>{if(e.key==='Escape'){e.stopImmediatePropagation();close()}};
+  document.addEventListener('keydown',onKey,true);
+  $('#spX',root).onclick=close;
+  $('#spOk',root).onclick=close;
+  ov.addEventListener('mousedown',e=>{if(e.target===ov)close()});
+  const go=$('#spGo',root);
+  if(go)go.onclick=()=>{close();state.view='streak';renderApp()};
+
+  if(mode==='celebrate'){
+    if(RM){if(num)num.textContent=run.cur;if(newBest)best.hidden=false}
+    else{
+      T(()=>countUp(num,run.cur,900),980);
+      T(()=>{ /* coin lands — ping + golden burst */
+        ring.classList.add('go');
+        const r=$('.sp-coin',root).getBoundingClientRect();
+        confettiFX.burst(r.left+r.width/2,r.top+r.height/2,{count:24,angle:0,spread:360,speed:[3,7.5],
+          palette:['#ffb454','#ffd98a','#fff3d6','#ff9f2e']});
+      },1050);
+      T(()=>{const r=card.getBoundingClientRect();confettiFX.popper(r.left+26,r.bottom-16,-64)},1300);
+      T(()=>{const r=card.getBoundingClientRect();confettiFX.popper(r.right-26,r.bottom-16,-116)},1460);
+      if(newBest)T(()=>{best.hidden=false},1650);
+    }
+  }else if(!RM){
+    if(num)countUp(num,run.cur,500);
+  }
+}
 
 /* ================================================================
    SIDEBAR
@@ -1020,7 +1317,7 @@ function renderSidebar(){
     ${navItem('coach','sparkles','AI Coach')}
     <div class="grow"></div>
     <div class="side-foot">
-      <div class="sstat"><span class="sic fire"><i data-lucide="flame"></i></span><div><b>${st.current}</b><span>day streak</span></div></div>
+      <div class="sstat click" id="sideStreakStat" title="View daily streak" role="button" tabindex="0"><span class="sic fire"><i data-lucide="flame"></i></span><div><b>${st.current}</b><span>day streak</span></div></div>
       <div class="sstat"><span class="sic ok"><i data-lucide="check"></i></span><div><b>${solvedTotal}</b><span>solved</span></div></div>
     </div>
     <div class="side-io">
@@ -1030,9 +1327,14 @@ function renderSidebar(){
     <button class="wipe" id="wipeBtn">Clear all data</button>
     <input type="file" id="impFile" accept=".json,application/json" hidden>`;
   sb.querySelectorAll('.nav-item').forEach(b=>b.onclick=()=>{state.view=b.dataset.view;renderApp()});
+  const sss=$('#sideStreakStat',sb);
+  if(sss){
+    sss.onclick=()=>showStreakPopup(false);
+    sss.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();showStreakPopup(false)}};
+  }
   const wipe=$('#wipeBtn');
   wipe.onclick=()=>{
-    if(wipe.dataset.arm){DB={problems:[],contests:[],streaks:[]};save();renderApp();toast('All data cleared',{icon:'trash-2'})}
+    if(wipe.dataset.arm){DB={problems:[],contests:[],streaks:[]};celebratedDay=null;save();renderApp();toast('All data cleared',{icon:'trash-2'})}
     else{wipe.dataset.arm='1';wipe.textContent='Click again to confirm';wipe.classList.add('arm');
       setTimeout(()=>{if(wipe.isConnected){delete wipe.dataset.arm;wipe.textContent='Clear all data';wipe.classList.remove('arm')}},2600)}
   };
@@ -1181,7 +1483,7 @@ function renderDaily(v){
 }
 
 /* ================================================================
-   VIEW: DAILY STREAK — the daily-challenge question tracker
+   VIEW: DAILY STREAK
 ================================================================ */
 function renderStreak(v){
   const tk=todayKey();
@@ -1193,7 +1495,6 @@ function renderStreak(v){
   const challengeLine=solvedT?"today's challenge is banked":(todays.length?"today's challenge is open":"log today's challenge");
   const risk=!solvedT&&run.cur>0;
 
-  /* section-local aggregates */
   const sDiff={Easy:0,Medium:0,Hard:0};DB.streaks.forEach(q=>{if(q.solved&&sDiff[q.difficulty]!=null)sDiff[q.difficulty]++});
   const sTopics={};DB.streaks.filter(q=>q.solved).forEach(q=>{const t=q.topic||'Other';sTopics[t]=(sTopics[t]||0)+1});
   const topTopics=Object.entries(sTopics).sort((a,b)=>b[1]-a[1]).slice(0,4);
@@ -1204,7 +1505,7 @@ function renderStreak(v){
         <span><b>${run.cur}</b> day run</span><i class="sep"></i>
         <span><b>${solvedT}</b> solved today</span><i class="sep"></i>
         <span><b>${solvedTotal}</b> logged</span>
-      </div>${risk?`<div class="risk-pill"><i data-lucide="flame"></i>Challenge streak at risk — solve today's question</div>`:''}`)}
+      </div>${risk?`<div class="risk-pill" id="riskPill" title="View daily streak"><i data-lucide="flame"></i>Challenge streak at risk — solve today's question</div>`:''}`)}
     <div class="content">
       <div class="primary">
         <div class="card">
@@ -1226,7 +1527,7 @@ function renderStreak(v){
         <div class="card list-card"><div id="sList"></div></div>
       </div>
       <aside class="rail">
-        <div class="card streak-card">
+        <div class="card streak-card" id="streakWidget" title="View the 7-day streak popup" role="button" tabindex="0" style="cursor:pointer">
           <div class="streak-top">
             <span class="flame-big rose"><i data-lucide="flame"></i></span>
             <div><div class="big rose" id="railStreak">0</div><div class="sl">${challengeLine}</div></div>
@@ -1258,6 +1559,11 @@ function renderStreak(v){
   const mx=Math.max(1,...s.wd);
   $('#sWd',v).innerHTML=s.wd.map((n,i)=>`<div class="wd-col" title="${n} active day${n===1?'':'s'}"><div class="wd-bar${n===mx&&n>0?' top':''}" style="height:${Math.max(4,n/mx*36)}px"></div><span>${'SMTWTFS'[i]}</span></div>`).join('');
   countUp($('#railStreak',v),run.cur,700);
+
+  const widget=$('#streakWidget',v);
+  widget.onclick=()=>showStreakPopup(false);
+  widget.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();showStreakPopup(false)}};
+  const rp=$('#riskPill',v);if(rp)rp.onclick=()=>showStreakPopup(false);
 
   const calEl=$('#sCal',v),listEl=$('#sList',v);
 
@@ -1292,7 +1598,9 @@ function renderStreak(v){
     const act=e.target.closest('[data-act]')?.dataset.act;
     if(act==='toggle'){
       const before=solvedSet().has(todayKey());
-      item.solved=!item.solved;save();renderApp();maybeStreakToast(before);
+      const wasSolved=item.solved;
+      item.solved=!item.solved;save();renderApp();
+      if(!maybeCelebrateStreak(item,wasSolved))maybeStreakToast(before);
     }
     else if(act==='open')openDetail('streaks',item.id);
     else if(act==='notes')openDetail('streaks',item.id,true);
@@ -1696,10 +2004,11 @@ function openDetail(kind,id,openNotes=false){
   const stBtn=$('#mStatus',root);
   stBtn.onclick=()=>{
     const before=solvedSet().has(todayKey());
+    const wasSolved=item.solved;
     item.solved=!item.solved;dirty=true;save();
     stBtn.className='chip status '+(item.solved?'st-ok':'st-no');
     stBtn.textContent=item.solved?'Solved':'Unsolved';
-    maybeStreakToast(before);
+    if(!(kind==='streaks'&&maybeCelebrateStreak(item,wasSolved)))maybeStreakToast(before);
   };
 
   const hints=hintsFor(item);let stage=item.hintStage||0;
