@@ -344,7 +344,7 @@ body.dragging .prow:hover{background:rgba(255,255,255,.02)}
 .split{flex:none;width:7px;cursor:col-resize;position:relative}
 .split::after{content:'';position:absolute;left:2.5px;top:50%;width:2px;height:34px;border-radius:2px;background:rgba(255,255,255,.16);transform:translateY(-50%)}
 body.colcur{cursor:col-resize;user-select:none}
-.pane-bar{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.07);flex:none}
+.pane-bar{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.07);flex:none;flex-wrap:wrap}
 .pane-bar.dark{border-bottom:1px solid rgba(255,255,255,.06)}
 .plabel{font-size:11px;font-weight:750;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)}
 .pane-bar.dark .plabel{color:rgba(255,255,255,.4)}
@@ -359,6 +359,13 @@ body.colcur{cursor:col-resize;user-select:none}
 .md-prev code{font:12px 'JetBrains Mono';background:rgba(255,255,255,.09);color:#ffd9a0;padding:2px 5px;border-radius:5px}
 .md-prev pre{background:#0d1020;color:#dbe2f4;padding:12px 14px;border-radius:10px;overflow-x:auto;font:12.5px/1.55 'JetBrains Mono';margin:8px 0;border:1px solid rgba(255,255,255,.06)}
 .md-prev ul{padding-left:18px;margin:6px 0}
+/* images in the problem statement */
+.md-prev img.md-img{display:block;max-width:min(100%,560px);margin:10px auto 8px;border-radius:12px;border:1px solid rgba(255,255,255,.12);box-shadow:0 12px 28px -12px rgba(0,0,10,.65);cursor:zoom-in;transition:transform .2s cubic-bezier(.2,.8,.2,1),box-shadow .2s}
+.md-prev img.md-img:hover{transform:scale(1.015);box-shadow:0 16px 36px -12px rgba(0,0,10,.8),0 0 22px -8px rgba(255,180,84,.3)}
+.img-missing{display:inline-block;padding:4px 10px;border:1px dashed rgba(255,107,129,.5);border-radius:8px;color:#ff92a4;font-size:11px;font-weight:700}
+.img-btn{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:5px 11px;border-radius:99px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.07);color:var(--ink2);cursor:pointer;transition:.18s;flex:none}
+.img-btn:hover{background:rgba(255,255,255,.15);color:var(--ink);transform:translateY(-1px)}
+.img-btn svg{width:13px;height:13px}
 .hint-btn{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:5px 11px;border-radius:99px;border:1px solid rgba(255,180,84,.4);background:rgba(255,180,84,.11);color:var(--accent);cursor:pointer;transition:.18s;flex:none}
 .hint-btn:hover{background:rgba(255,180,84,.22);box-shadow:0 0 18px -4px rgba(255,180,84,.5);transform:translateY(-1px)}
 .hint-btn svg{width:13px;height:13px}
@@ -390,6 +397,14 @@ body.colcur{cursor:col-resize;user-select:none}
   .split{display:none}
   .m-notes{position:absolute;right:0;top:0;bottom:0;z-index:5;box-shadow:-14px 0 34px rgba(0,0,10,.5);background:rgba(42,34,24,.97)}
 }
+
+/* ============ image lightbox ============ */
+.lb-ov{position:fixed;inset:0;z-index:85;background:rgba(5,7,16,.85);backdrop-filter:blur(12px) saturate(1.2);-webkit-backdrop-filter:blur(12px) saturate(1.2);display:grid;place-items:center;padding:30px;animation:fade .2s;cursor:zoom-out}
+.lb-ov.out{opacity:0;transition:.15s}
+.lb-ov img{max-width:100%;max-height:100%;border-radius:14px;border:1px solid rgba(255,255,255,.16);box-shadow:0 40px 90px -20px rgba(0,0,10,.85),0 0 60px -20px rgba(255,180,84,.25);animation:pop .3s cubic-bezier(.18,1,.28,1)}
+.lb-x{position:absolute;top:16px;right:16px;width:34px;height:34px;border-radius:10px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.08);color:var(--ink2);display:grid;place-items:center;cursor:pointer;transition:.15s}
+.lb-x:hover{background:rgba(255,255,255,.18);color:var(--ink)}
+.lb-x svg{width:16px;height:16px}
 
 /* ============ coach chat ============ */
 .chat-card{display:flex;flex-direction:column;height:calc(100vh - 190px);min-height:440px;padding:18px}
@@ -517,6 +532,7 @@ body.colcur{cursor:col-resize;user-select:none}
 <div id="toasts"></div>
 <div id="modalRoot"></div>
 <div id="streakRoot"></div>
+<div id="lightboxRoot"></div>
 <canvas id="confetti"></canvas>
 
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
@@ -524,7 +540,8 @@ body.colcur{cursor:col-resize;user-select:none}
 /* ================================================================
    LeetGlass — local-first LeetCode progress tracker
    Daily Problems · Daily Streak · Contests · AI Coach
-   Manual per-day ordering · celebration popup · all local.
+   Per-day ordering · images in problem statements · celebration
+   popup · all local, no servers, no keys.
 ================================================================ */
 
 /* ---------- tiny helpers ---------- */
@@ -568,7 +585,16 @@ function load(){
     try{const r=localStorage.getItem(k);if(r)return JSON.parse(r)}catch(e){}
   }
   return null}
-function save(){try{localStorage.setItem(LS_KEY,JSON.stringify(DB))}catch(e){}}
+let storageWarned=false;
+function save(){
+  try{localStorage.setItem(LS_KEY,JSON.stringify(DB))}
+  catch(e){
+    if(!storageWarned){
+      storageWarned=true;
+      toast('Storage is full — export a backup and remove some images',{icon:'circle-alert',dur:8000});
+    }
+  }
+}
 
 /* ---------- backup: export / import ---------- */
 function exportData(){
@@ -589,13 +615,76 @@ function importData(file){
       toast('That file is not a valid LeetGlass backup',{icon:'circle-alert'});return;
     }
     const prev=DB;
-    DB={problems:d.problems,contests:d.contests,streaks:d.streaks};
+    DB={problems:d.problems,contests:d.contests,streaks:d.streaks,
+        images:(d.images&&typeof d.images==='object')?d.images:{}};
     ensureOrders();save();renderApp();
     const n=DB.problems.length+DB.contests.length+DB.streaks.length;
     toast(`Imported ${n} item${n===1?'':'s'} from backup`,{icon:'check',dur:6000,
       action:{label:'Undo',fn:()=>{DB=prev;save();renderApp()}}});
   };
   r.readAsText(file);
+}
+
+/* ---------- image store: registry + markdown tokens ----------
+   Descriptions reference images as ![caption](img:ID); the actual
+   data URL lives in DB.images. Small/optimised so localStorage holds. */
+function addImage(dataUrl){
+  if(!DB.images)DB.images={};
+  const id=uid();
+  DB.images[id]=dataUrl;
+  return id;
+}
+function readAsDataURL(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(file)})}
+function loadImageEl(src){return new Promise((res,rej)=>{const im=new Image();im.onload=()=>res(im);im.onerror=rej;im.src=src})}
+async function processImageFile(file){
+  try{
+    const dataUrl=await readAsDataURL(file);
+    if(dataUrl.length<=180*1024)return dataUrl; /* small enough — keep as-is */
+    const img=await loadImageEl(dataUrl);
+    const maxDim=1100,sc=Math.min(1,maxDim/Math.max(img.width,img.height));
+    const cv=document.createElement('canvas');
+    cv.width=Math.max(1,Math.round(img.width*sc));cv.height=Math.max(1,Math.round(img.height*sc));
+    cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+    return cv.toDataURL('image/jpeg',.85);
+  }catch(e){return null}
+}
+function insertAtCursor(ta,text){
+  const s=ta.selectionStart??ta.value.length,e=ta.selectionEnd??s;
+  ta.setRangeText(text,s,e,'end');
+  ta.focus();
+  ta.dispatchEvent(new Event('input')); /* trigger autosave */
+}
+/* collect ids referenced in a text */
+function imgIdsIn(txt){
+  const out=new Set(),re=/\(img:([A-Za-z0-9]+)\)/g;let m;
+  while((m=re.exec(txt||'')))out.add(m[1]);
+  return out;
+}
+/* remove images whose tokens vanished from the edited description,
+   unless they are still referenced elsewhere */
+function gcImages(oldTxt,newTxt){
+  if(!DB.images||!Object.keys(DB.images).length)return;
+  const lost=[...imgIdsIn(oldTxt)].filter(id=>!imgIdsIn(newTxt).has(id));
+  if(!lost.length)return;
+  const elsewhere=new Set();
+  for(const it of [...DB.problems,...DB.streaks,...DB.contests]){
+    const ids=imgIdsIn((it.description||'')+'\n'+(it.notes||''));
+    for(const id of ids)elsewhere.add(id);
+  }
+  let removed=false;
+  for(const id of lost)if(!elsewhere.has(id)&&DB.images[id]){delete DB.images[id];removed=true}
+  if(removed)save();
+}
+/* full-screen image viewer */
+function openLightbox(src){
+  const root=$('#lightboxRoot');
+  root.innerHTML=`<div class="lb-ov" id="lbOv"><img src="${src}" alt=""><button class="lb-x" id="lbX" title="Close"><i data-lucide="x"></i></button></div>`;
+  refreshIcons();
+  const ov=$('#lbOv',root);
+  const close=()=>{document.removeEventListener('keydown',onKey,true);root.innerHTML=''};
+  const onKey=e=>{if(e.key==='Escape'){e.stopImmediatePropagation();close()}};
+  document.addEventListener('keydown',onKey,true);
+  ov.onclick=()=>close();
 }
 
 /* ---------- knowledge base for the local "AI" ---------- */
@@ -716,6 +805,10 @@ const GENERIC_HINTS=[
 function hintsFor(item){const s=(item.name+' '+(item.topic||'')).toLowerCase();for(const r of HINTS)if(r.re.test(s))return r.h;return GENERIC_HINTS}
 
 /* ---------- seed demo data (relative to today) ---------- */
+/* sample tree diagram for the demo description (tiny inline SVG — no storage cost) */
+const TREE_SVG=`<svg xmlns='http://www.w3.org/2000/svg' width='300' height='175' viewBox='0 0 300 175'><rect width='300' height='175' rx='12' fill='#1d2238'/><g stroke='#767e9b' stroke-width='2'><line x1='150' y1='40' x2='80' y2='95'/><line x1='150' y1='40' x2='220' y2='95'/><line x1='220' y1='105' x2='180' y2='140'/><line x1='220' y1='105' x2='260' y2='140'/></g><g fill='#ffb454' stroke='#2b1c00' stroke-width='1.5'><circle cx='150' cy='35' r='17'/><circle cx='80' cy='100' r='17'/><circle cx='220' cy='100' r='17'/><circle cx='180' cy='150' r='14'/><circle cx='260' cy='150' r='14'/></g><g font-family='monospace' font-size='14' fill='#2b1c00' text-anchor='middle' font-weight='bold'><text x='150' y='40'>3</text><text x='80' y='105'>9</text><text x='220' y='105'>20</text><text x='180' y='155'>15</text><text x='260' y='155'>7</text></g></svg>`;
+const TREE_IMG='data:image/svg+xml;utf8,'+encodeURIComponent(TREE_SVG);
+
 function makeSeed(){
   const T=new Date(),D=n=>dkey(addDays(T,-n));
   const P=(num,name,difficulty,topic,day,solved,notes='')=>({id:uid(),num:String(num),name,difficulty,topic,date:D(day),solved,notes,description:'',code:'',language:'python',hintStage:0});
@@ -762,19 +855,21 @@ function makeSeed(){
     CS('Diameter of Binary Tree',3,11,true),
     CS('Path Sum III',3,35,false,'Needs prefix sums over tree paths — queue a retry.')
   ];
-  return{problems,contests,streaks:makeStreakSeed()};
+  return{problems,contests,streaks:makeStreakSeed(),images:{}};
 }
 
 /* daily-challenge (streak) questions: a 10-day run, a missed day, a 12-day run before that */
 function makeStreakSeed(){
   const T=new Date(),D=n=>dkey(addDays(T,-n));
   const Q=(num,name,difficulty,topic,day,solved,notes='')=>({id:uid(),num:String(num),name,difficulty,topic,date:D(day),solved,notes,description:'',code:'',language:'python',hintStage:0});
+  const treeQ=Q(104,'Maximum Depth of Binary Tree','Easy','Tree',4,true,'Recursion: 1 + max(depth(L), depth(R)). BFS level count works too.');
+  treeQ.description=`## 104. Maximum Depth of Binary Tree\n\n**Easy** · Tree · daily challenge\n\nGiven the root of a binary tree, return its maximum depth.\n\nA binary tree's maximum depth is the number of nodes along the longest path from the root node down to the farthest leaf node.\n\n### Example\n\n![example tree](${TREE_IMG})\n\n**Input:** root = [3,9,20,null,null,15,7]\n**Output:** 3\n\n### Constraints\n\n- The number of nodes in the tree is in the range [0, 10\u2074].\n- -100 <= Node.val <= 100\n`;
   return[
     Q(997,'Find the Town Judge','Easy','Graph',0,false),
     Q(496,'Next Greater Element I','Easy','Stack',1,true),
     Q(733,'Flood Fill','Easy','Graph',2,true,'BFS from the seed pixel. Guard: if the start pixel already has the target color, return early or you loop forever.'),
     Q(876,'Middle of the Linked List','Easy','Linked List',3,true),
-    Q(104,'Maximum Depth of Binary Tree','Easy','Tree',4,true),
+    treeQ,
     Q(387,'First Unique Character in a String','Easy','String',5,true),
     Q(283,'Move Zeroes','Easy','Array',6,true),
     Q(67,'Add Binary','Easy','Math',7,true),
@@ -804,10 +899,9 @@ if(!Array.isArray(DB.streaks)){
   DB.streaks=(DB.problems.length||DB.contests.length)?makeStreakSeed():[];
   save();
 }
+if(!DB.images||typeof DB.images!=='object'||Array.isArray(DB.images))DB.images={};
 
 /* ---------- manual per-day ordering ---------- */
-/* one-time migration: give every item an `order` within its date,
-   preserving the order currently shown (by problem number, else insertion) */
 function ensureOrders(){
   let changed=false;
   for(const kind of ['problems','streaks','contests']){
@@ -815,7 +909,7 @@ function ensureOrders(){
     DB[kind].forEach(it=>{(byDate[it.date]=byDate[it.date]||[]).push(it)});
     for(const arr of Object.values(byDate)){
       if(arr.every(it=>typeof it.order==='number'))continue;
-      arr.sort((a,b)=>((+a.num||0)-(+b.num||0))||0); /* stable: ties keep insertion order */
+      arr.sort((a,b)=>((+a.num||0)-(+b.num||0))||0);
       arr.forEach((it,i)=>{if(it.order!==i){it.order=i;changed=true}});
     }
   }
@@ -875,7 +969,7 @@ function attachDrag(listEl,kind,repaint){
     const el=document.elementFromPoint(e.clientX,e.clientY);
     const t=el?.closest?.('.prow');
     if(!t||t===d.row||!listEl.contains(t))return;
-    if(t.dataset.date!==d.date)return; /* only reorder within the same day */
+    if(t.dataset.date!==d.date)return;
     const tr=t.getBoundingClientRect();
     d.before=e.clientY<tr.top+tr.height/2;
     d.targetId=t.dataset.id;
@@ -907,7 +1001,6 @@ function streakInfo(){
   while(s.has(dkey(d))){current++;d=addDays(d,-1)}
   return{current,longest,todaySolved};
 }
-/* challenge run = consecutive days with a solved streak-question (this section only) */
 function streakRun(){
   const s=new Set(DB.streaks.filter(q=>q.solved).map(q=>q.date)),keys=[...s].sort();
   let longest=0,run=0;
@@ -1033,10 +1126,18 @@ function deleteItem(kind,id){
     action:{label:'Undo',fn:()=>{arr.splice(Math.min(i,arr.length),0,item);save();renderApp()}}});
 }
 
-/* ---------- markdown-lite ---------- */
+/* ---------- markdown-lite (now with images) ---------- */
+const IMG_RE=/!\[([^\]]*)\]\((img:[A-Za-z0-9]+|data:[^)\s]+|https?:\/\/[^)\s]+)\)/g;
 function mdToHtml(src){
   const escH=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  const inline=s=>escH(s).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/`([^`]+)`/g,'<code>$1</code>');
+  const inline=s=>escH(s)
+    .replace(IMG_RE,(m,alt,src)=>{
+      const real=src.startsWith('img:')?(DB.images?.[src.slice(4)]||''):src;
+      if(!real)return `<span class="img-missing">missing image</span>`;
+      return `<img src="${real}" alt="${alt}" class="md-img" loading="lazy" title="Click to enlarge">`;
+    })
+    .replace(/\*\*(.+?)\*\*/g,'<b>$1</b>')
+    .replace(/`([^`]+)`/g,'<code>$1</code>');
   const lines=src.split('\n');let html='',inCode=false,inUl=false,par=[];
   const flushP=()=>{if(par.length){html+=`<p>${par.map(inline).join('<br>')}</p>`;par=[]}};
   const closeUl=()=>{if(inUl){html+='</ul>';inUl=false}};
@@ -1055,7 +1156,7 @@ function mdToHtml(src){
 }
 function scaffoldDesc(item,kind){
   const f='```';
-  if('difficulty'in item)return `## ${item.num?item.num+'. ':''}${item.name}\n\n**${item.difficulty||'Medium'}** · ${item.topic||'Algorithm'}${kind==='streaks'?' · daily challenge':''}\n\n### Problem\n\nDescribe the problem in your own words — the clearer the restatement, the easier the solve.\n\n### Examples\n\n**Example 1**\n\n${f}\nInput: \nOutput: \n${f}\n\n### Constraints\n\n- \n\n### Follow-up\n\n`;
+  if('difficulty'in item)return `## ${item.num?item.num+'. ':''}${item.name}\n\n**${item.difficulty||'Medium'}** · ${item.topic||'Algorithm'}${kind==='streaks'?' · daily challenge':''}\n\n### Problem\n\nDescribe the problem in your own words — the clearer the restatement, the easier the solve.\n\nTip: attach a screenshot with the Image button, by pasting it, or by dropping a file here.\n\n### Examples\n\n**Example 1**\n\n${f}\nInput: \nOutput: \n${f}\n\n### Constraints\n\n- \n\n### Follow-up\n\n`;
   return `## ${item.name}\n\n**Contest problem** · ${item.minutes?fmtMin(item.minutes)+' spent':'time not logged'}\n\n### Problem\n\nDescribe it in your own words.\n\n### Examples\n\n${f}\nInput: \nOutput: \n${f}\n\n### Constraints\n\n- \n`;
 }
 
@@ -1193,7 +1294,7 @@ const confettiFX=(function(){
     ctx.clearRect(0,0,W,H);
     for(let i=parts.length-1;i>=0;i--){
       const p=parts[i];
-      if(p.t==='c'){ /* the popper cone */
+      if(p.t==='c'){
         p.life--;
         const t=34-p.life;
         ctx.save();
@@ -1227,7 +1328,7 @@ const confettiFX=(function(){
         ctx.fillStyle=p.c;
         ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);
         ctx.restore();
-      }else{ /* spark */
+      }else{
         p.vy+=.18;p.vx*=.94;p.vy*=.94;
         p.x+=p.vx;p.y+=p.vy;p.life--;
         if(p.life<=0){parts.splice(i,1);continue}
@@ -1253,7 +1354,7 @@ const confettiFX=(function(){
   document.addEventListener('mousemove',e=>{
     tx=e.clientX;ty=e.clientY;
     if(!seen){seen=true;x=tx;y=ty;g.style.opacity='1'}
-    const hot=e.target.closest?.('button,.pname,.cb,.cday,a,input,select,textarea,.qchip,.rq-row,.seg,.nav-item,.chip.status,.sp-circ,.drag-handle');
+    const hot=e.target.closest?.('button,.pname,.cb,.cday,a,input,select,textarea,.qchip,.rq-row,.seg,.nav-item,.chip.status,.sp-circ,.drag-handle,.md-img');
     g.classList.toggle('hot',!!hot);
   },{passive:true});
   document.addEventListener('mouseleave',()=>{g.style.opacity='0';seen=false});
@@ -1285,7 +1386,6 @@ function longestChainExclToday(){
   for(let i=0;i<keys.length;i++){if(i>0&&dayDiff(keys[i-1],keys[i])===1)run++;else run=1;if(run>longest)longest=run}
   return longest;
 }
-/* returns true when the celebration popup fired (call AFTER saving the flip) */
 function maybeCelebrateStreak(item,wasSolved){
   const tk=todayKey();
   if(wasSolved||!item.solved||item.date!==tk)return false;
@@ -1384,7 +1484,7 @@ function showStreakPopup(celebrate){
     if(RM){if(num)num.textContent=run.cur;if(newBest)best.hidden=false}
     else{
       T(()=>countUp(num,run.cur,900),980);
-      T(()=>{ /* coin lands — ping + golden burst */
+      T(()=>{
         ring.classList.add('go');
         const r=$('.sp-coin',root).getBoundingClientRect();
         confettiFX.burst(r.left+r.width/2,r.top+r.height/2,{count:24,angle:0,spread:360,speed:[3,7.5],
@@ -1445,7 +1545,7 @@ function renderSidebar(){
   }
   const wipe=$('#wipeBtn');
   wipe.onclick=()=>{
-    if(wipe.dataset.arm){DB={problems:[],contests:[],streaks:[]};celebratedDay=null;save();renderApp();toast('All data cleared',{icon:'trash-2'})}
+    if(wipe.dataset.arm){DB={problems:[],contests:[],streaks:[],images:{}};celebratedDay=null;save();renderApp();toast('All data cleared',{icon:'trash-2'})}
     else{wipe.dataset.arm='1';wipe.textContent='Click again to confirm';wipe.classList.add('arm');
       setTimeout(()=>{if(wipe.isConnected){delete wipe.dataset.arm;wipe.textContent='Clear all data';wipe.classList.remove('arm')}},2600)}
   };
@@ -2011,7 +2111,7 @@ function renderCoach(v){
 }
 
 /* ================================================================
-   DETAIL MODAL — LeetCode-style split window
+   DETAIL MODAL — LeetCode-style split window (with images)
 ================================================================ */
 function openDetail(kind,id,openNotes=false){
   const item=DB[kind].find(x=>x.id===id);if(!item)return;
@@ -2045,8 +2145,10 @@ function openDetail(kind,id,openNotes=false){
             <span class="plabel">Description</span>
             <div class="seg" id="dSeg"><button data-m="edit" class="active" type="button">Edit</button><button data-m="prev" type="button">Preview</button></div>
             <span class="save-ind" id="dSave">Saved</span>
+            <button class="img-btn" id="imgBtn" type="button" title="Insert image — you can also paste or drop one into the editor"><i data-lucide="image-plus"></i>Image</button>
             <button class="hint-btn" id="hintBtn"><i data-lucide="sparkles"></i>AI hint</button>
           </div>
+          <input type="file" id="imgFile" accept="image/*" multiple hidden>
           <textarea class="desc-ta" id="dTa" spellcheck="false" placeholder="Describe the problem, examples and constraints…"></textarea>
           <div class="md-prev" id="mdPrev" hidden></div>
           <div class="hint-area" id="hintArea" hidden>
@@ -2091,12 +2193,52 @@ function openDetail(kind,id,openNotes=false){
   if(openNotes)mdl.classList.add('notes-open');
   refreshIcons();
 
+  /* ---- image intake: button, paste, drag & drop ---- */
+  async function handleImageFiles(files){
+    const imgs=files.filter(f=>f&&/^image\//.test(f.type));
+    if(!imgs.length)return;
+    let added=0;
+    for(const f of imgs){
+      const du=await processImageFile(f);
+      if(!du)continue;
+      const imgId=addImage(du);
+      const cap=(f.name||'image').replace(/\.[^.]+$/,'').slice(0,60);
+      insertAtCursor(dTa,`\n\n![${cap}](img:${imgId})\n\n`);
+      added++;
+    }
+    if(added){
+      save();dirty=true;flashSave($('#dSave',root));
+      toast(`${added} image${added>1?'s':''} added — flip to Preview to see ${added>1?'them':'it'}`,{icon:'image'});
+      /* refresh preview if it is open */
+      if(!mdPrev.hidden)mdPrev.innerHTML=mdToHtml(dTa.value);
+    }
+  }
+  const imgFileInput=$('#imgFile',root);
+  $('#imgBtn',root).onclick=()=>imgFileInput.click();
+  imgFileInput.onchange=async e=>{const fs=[...e.target.files];e.target.value='';await handleImageFiles(fs)};
+  dTa.addEventListener('paste',async e=>{
+    const items=[...(e.clipboardData?.items||[])];
+    const files=items.filter(i=>i.kind==='file'&&/^image\//.test(i.type)).map(i=>i.getAsFile()).filter(Boolean);
+    if(files.length){e.preventDefault();await handleImageFiles(files)}
+  });
+  dTa.addEventListener('dragover',e=>e.preventDefault());
+  dTa.addEventListener('drop',async e=>{
+    const files=[...(e.dataTransfer?.files||[])];
+    if(files.some(f=>/^image\//.test(f.type))){e.preventDefault();await handleImageFiles(files)}
+  });
+  /* click an image in preview → lightbox */
+  mdPrev.addEventListener('click',e=>{const im=e.target.closest?.('img.md-img');if(im)openLightbox(im.src)});
+
   const paintGut=()=>{gut.innerHTML=Array.from({length:cTa.value.split('\n').length},(_,i)=>i+1).join('<br>')};
   paintGut();
   cTa.addEventListener('scroll',()=>gut.scrollTop=cTa.scrollTop);
 
   const mkSave=(ind,fn)=>debounce(()=>{fn();save();dirty=true;flashSave(ind)},450);
-  const saveDesc=mkSave($('#dSave',root),()=>item.description=dTa.value);
+  const saveDesc=mkSave($('#dSave',root),()=>{
+    const prev=item.description||'';
+    item.description=dTa.value;
+    gcImages(prev,item.description);
+  });
   const saveCode=mkSave($('#cSave',root),()=>item.code=cTa.value);
   const saveNotes=mkSave($('#nSave',root),()=>item.notes=nTa.value);
   dTa.addEventListener('input',saveDesc);
@@ -2173,7 +2315,9 @@ function openDetail(kind,id,openNotes=false){
   window.addEventListener('mouseup',up);
 
   function close(){
-    item.description=dTa.value;item.code=cTa.value;item.notes=nTa.value;save();
+    const prevDesc=item.description||'';
+    item.description=dTa.value;item.code=cTa.value;item.notes=nTa.value;
+    gcImages(prevDesc,item.description);save();
     window.removeEventListener('mousemove',mv);window.removeEventListener('mouseup',up);
     ovl.classList.add('out');setTimeout(()=>{root.innerHTML=''},200);
     if(dirty)renderApp();
