@@ -197,7 +197,7 @@ select.inp option{background:#232842;color:var(--ink)}
 @keyframes slideDown{from{opacity:0;transform:translateY(-6px)}}
 
 /* ============ rows ============ */
-.prow{display:flex;align-items:center;gap:11px;padding:9px 12px;border-radius:13px;transition:background .15s,box-shadow .15s}
+.prow{position:relative;display:flex;align-items:center;gap:11px;padding:9px 12px;border-radius:13px;transition:background .15s,box-shadow .15s,opacity .2s}
 .prow:hover{background:rgba(255,255,255,.045)}
 .prow.ok .pname{color:var(--ink2)}
 .pname{border:0;background:none;padding:2px 0;font-size:13.8px;font-weight:600;color:var(--ink);cursor:pointer;text-align:left;display:flex;align-items:baseline;gap:7px;min-width:0;transition:color .15s,transform .15s}
@@ -231,6 +231,24 @@ select.inp option{background:#232842;color:var(--ink)}
 .filt-chip button:hover{background:var(--red);color:#fff}
 .filt-chip button svg{width:11px;height:11px}
 .list-card{padding:6px 8px;min-height:340px}
+
+/* ============ drag-to-reorder within a day ============ */
+.drag-handle{flex:none;width:15px;display:grid;place-items:center;color:var(--ink3);cursor:grab;opacity:0;transition:opacity .15s,color .15s;touch-action:none;user-select:none;-webkit-user-select:none}
+.prow:hover .drag-handle{opacity:.7}
+.drag-handle:hover{color:var(--accent);opacity:1}
+.drag-handle:active{cursor:grabbing}
+.drag-handle svg{width:14px;height:14px;pointer-events:none}
+@media(hover:none){.drag-handle{opacity:.55}}
+body.dragging{cursor:grabbing;user-select:none;-webkit-user-select:none}
+body.dragging .prow:hover{background:rgba(255,255,255,.02)}
+.prow.drag-src{opacity:.35;box-shadow:inset 0 0 0 1.5px rgba(255,180,84,.5)}
+.prow.drop-above::before,.prow.drop-below::after{content:'';position:absolute;left:8px;right:8px;height:3px;border-radius:99px;background:linear-gradient(90deg,var(--accent),var(--pink));box-shadow:0 0 12px rgba(255,180,84,.8);pointer-events:none;animation:dropLine .18s ease-out}
+.prow.drop-above::before{top:-6px}
+.prow.drop-below::after{bottom:-6px}
+@keyframes dropLine{from{transform:scaleX(.3);opacity:0}}
+.drag-ghost{position:fixed;z-index:95;pointer-events:none;opacity:.97;margin:0;border:1px solid rgba(255,180,84,.55)!important;background:rgba(38,43,74,.98)!important;box-shadow:0 22px 50px -12px rgba(0,0,10,.7),0 0 30px -6px rgba(255,180,84,.35)!important;transform:rotate(1.6deg) scale(1.02);border-radius:13px!important}
+.drag-ghost .drag-handle{opacity:1;color:var(--accent)}
+.drag-ghost .row-del{display:none}
 
 /* ============ checkbox ============ */
 .cb{width:22px;height:22px;border-radius:7px;border:1.5px solid rgba(255,255,255,.24);background:rgba(255,255,255,.06);display:grid;place-items:center;cursor:pointer;flex:none;transition:.2s}
@@ -505,8 +523,8 @@ body.colcur{cursor:col-resize;user-select:none}
 <script>
 /* ================================================================
    LeetGlass — local-first LeetCode progress tracker
-   Daily Problems · Daily Streak (with celebration popup) ·
-   Contests · AI Coach — all local, no servers, no keys.
+   Daily Problems · Daily Streak · Contests · AI Coach
+   Manual per-day ordering · celebration popup · all local.
 ================================================================ */
 
 /* ---------- tiny helpers ---------- */
@@ -572,7 +590,7 @@ function importData(file){
     }
     const prev=DB;
     DB={problems:d.problems,contests:d.contests,streaks:d.streaks};
-    save();renderApp();
+    ensureOrders();save();renderApp();
     const n=DB.problems.length+DB.contests.length+DB.streaks.length;
     toast(`Imported ${n} item${n===1?'':'s'} from backup`,{icon:'check',dur:6000,
       action:{label:'Undo',fn:()=>{DB=prev;save();renderApp()}}});
@@ -787,6 +805,96 @@ if(!Array.isArray(DB.streaks)){
   save();
 }
 
+/* ---------- manual per-day ordering ---------- */
+/* one-time migration: give every item an `order` within its date,
+   preserving the order currently shown (by problem number, else insertion) */
+function ensureOrders(){
+  let changed=false;
+  for(const kind of ['problems','streaks','contests']){
+    const byDate={};
+    DB[kind].forEach(it=>{(byDate[it.date]=byDate[it.date]||[]).push(it)});
+    for(const arr of Object.values(byDate)){
+      if(arr.every(it=>typeof it.order==='number'))continue;
+      arr.sort((a,b)=>((+a.num||0)-(+b.num||0))||0); /* stable: ties keep insertion order */
+      arr.forEach((it,i)=>{if(it.order!==i){it.order=i;changed=true}});
+    }
+  }
+  if(changed)save();
+}
+function nextOrder(kind,date){
+  const arr=DB[kind].filter(i=>i.date===date);
+  return arr.length?Math.max(...arr.map(i=>typeof i.order==='number'?i.order:-1))+1:0;
+}
+function applyReorder(kind,dragId,targetId,before){
+  const dragItem=DB[kind].find(i=>i.id===dragId);
+  if(!dragItem)return false;
+  const arr=DB[kind].filter(i=>i.date===dragItem.date).sort((a,b)=>(a.order??0)-(b.order??0));
+  const from=arr.findIndex(i=>i.id===dragId);
+  if(from<0)return false;
+  const [moved]=arr.splice(from,1);
+  let to=arr.findIndex(i=>i.id===targetId);
+  if(to<0)return false;
+  if(!before)to++;
+  arr.splice(to,0,moved);
+  arr.forEach((it,i)=>it.order=i);
+  save();return true;
+}
+
+/* pointer-based drag & drop (mouse + touch) — reorder within the same date only */
+function attachDrag(listEl,kind,repaint){
+  let d=null;
+  const clearInd=()=>listEl.querySelectorAll('.drop-above,.drop-below').forEach(r=>r.classList.remove('drop-above','drop-below'));
+  const cleanup=()=>{if(!d)return;const c=d;d=null;c.ghost?.remove();c.row?.classList.remove('drag-src');clearInd();document.body.classList.remove('dragging')};
+  listEl.addEventListener('pointerdown',e=>{
+    if(e.button!==0)return;
+    const handle=e.target.closest('[data-act="drag"]');
+    if(!handle)return;
+    const row=handle.closest('.prow');
+    if(!row||!row.dataset.id||!row.dataset.date)return;
+    e.preventDefault();
+    try{handle.setPointerCapture(e.pointerId)}catch(err){}
+    const r=row.getBoundingClientRect();
+    d={row,id:row.dataset.id,date:row.dataset.date,ghost:null,started:false,
+       startX:e.clientX,startY:e.clientY,offY:e.clientY-r.top,left:r.left,w:r.width,targetId:null,before:true};
+  });
+  listEl.addEventListener('pointermove',e=>{
+    if(!d)return;
+    if(!d.started){
+      if(Math.hypot(e.clientX-d.startX,e.clientY-d.startY)<6)return;
+      d.started=true;document.body.classList.add('dragging');
+      const g=d.row.cloneNode(true);
+      g.classList.add('drag-ghost');
+      g.style.left=d.left+'px';g.style.width=d.w+'px';g.style.top=(e.clientY-d.offY)+'px';
+      document.body.appendChild(g);
+      d.ghost=g;
+      d.row.classList.add('drag-src');
+    }
+    e.preventDefault();
+    if(d.ghost)d.ghost.style.top=(e.clientY-d.offY)+'px';
+    clearInd();
+    const el=document.elementFromPoint(e.clientX,e.clientY);
+    const t=el?.closest?.('.prow');
+    if(!t||t===d.row||!listEl.contains(t))return;
+    if(t.dataset.date!==d.date)return; /* only reorder within the same day */
+    const tr=t.getBoundingClientRect();
+    d.before=e.clientY<tr.top+tr.height/2;
+    d.targetId=t.dataset.id;
+    t.classList.add(d.before?'drop-above':'drop-below');
+  });
+  const finish=()=>{
+    if(!d)return;
+    const cur=d;cleanup();
+    if(cur.started&&cur.targetId){
+      if(applyReorder(kind,cur.id,cur.targetId,cur.before))repaint();
+    }
+  };
+  listEl.addEventListener('pointerup',finish);
+  listEl.addEventListener('pointercancel',cleanup);
+}
+
+/* migrate legacy data once, on load */
+ensureOrders();
+
 /* ---------- stats engine ---------- */
 function solvedSet(){const s=new Set();DB.problems.forEach(p=>p.solved&&s.add(p.date));DB.streaks.forEach(q=>q.solved&&s.add(q.date));DB.contests.forEach(c=>c.solved&&s.add(c.date));return s}
 function firstTracked(){const all=[...DB.problems,...DB.streaks,...DB.contests];return all.length?all.map(i=>i.date).sort()[0]:null}
@@ -888,8 +996,10 @@ function ringSVG(sol,tot,size=60,stroke=6){
   <text x="${c}" y="${c+size*0.075}" text-anchor="middle" font-size="${size*0.2}" font-weight="700" fill="var(--ink)" font-family="Albert Sans, sans-serif">${tot?sol+'/'+tot:'–'}</text></svg>`;
 }
 const CB_SVG='<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg>';
+const DRAG_HANDLE='<span class="drag-handle" data-act="drag" title="Drag to reorder within this day"><i data-lucide="grip-vertical"></i></span>';
 function probRow(p){
-  return `<div class="prow ${p.solved?'ok':''}" data-id="${p.id}">
+  return `<div class="prow ${p.solved?'ok':''}" data-id="${p.id}" data-date="${p.date}">
+    ${DRAG_HANDLE}
     <div class="cb ${p.solved?'on':''}" data-act="toggle" title="${p.solved?'Mark unsolved':'Mark solved'}">${CB_SVG}</div>
     <button class="pname" data-act="open">${p.num?`<span class="pnum">${esc(String(p.num))}</span>`:''}${esc(p.name)}</button>
     <span class="chip ${diffCls(p.difficulty)}">${p.difficulty||'—'}</span>
@@ -902,7 +1012,8 @@ function probRow(p){
 }
 function contestRow(c,maxMin){
   const w=maxMin?Math.min(100,Math.round((c.minutes||0)/maxMin*100)):0;
-  return `<div class="prow ${c.solved?'ok':''}" data-id="${c.id}">
+  return `<div class="prow ${c.solved?'ok':''}" data-id="${c.id}" data-date="${c.date}">
+    ${DRAG_HANDLE}
     <div class="cb ${c.solved?'on':''}" data-act="toggle" title="${c.solved?'Mark unsolved':'Mark solved'}">${CB_SVG}</div>
     <button class="pname" data-act="open">${esc(c.name)}</button>
     <span class="tchip" title="${c.minutes||0} minutes"><span class="tbw"><span class="tbar ${c.solved?'g':'r'}" style="width:${w}%"></span></span>${c.minutes?fmtMin(c.minutes):'—'}</span>
@@ -1142,7 +1253,7 @@ const confettiFX=(function(){
   document.addEventListener('mousemove',e=>{
     tx=e.clientX;ty=e.clientY;
     if(!seen){seen=true;x=tx;y=ty;g.style.opacity='1'}
-    const hot=e.target.closest?.('button,.pname,.cb,.cday,a,input,select,textarea,.qchip,.rq-row,.seg,.nav-item,.chip.status,.sp-circ');
+    const hot=e.target.closest?.('button,.pname,.cb,.cday,a,input,select,textarea,.qchip,.rq-row,.seg,.nav-item,.chip.status,.sp-circ,.drag-handle');
     g.classList.toggle('hot',!!hot);
   },{passive:true});
   document.addEventListener('mouseleave',()=>{g.style.opacity='0';seen=false});
@@ -1427,7 +1538,9 @@ function renderDaily(v){
   function paintList(){
     let items=[...DB.problems];
     if(filter.daily)items=items.filter(p=>p.date===filter.daily);
-    items.sort((a,b)=>a.date===b.date?((+a.num||0)-(+b.num||0)):(a.date<b.date?1:-1));
+    items.sort((a,b)=>a.date===b.date
+      ?(((a.order??0)-(b.order??0))||((+a.num||0)-(+b.num||0)))
+      :(a.date<b.date?1:-1));
     if(!items.length){
       listEl.innerHTML=emptyHTML('code',filter.daily?`Nothing on ${dayLabel(filter.daily)}`:'No problems yet',
         filter.daily?'Pick another day, or clear the filter to see everything.':'Add your first problem above — your streak starts today.');
@@ -1444,6 +1557,7 @@ function renderDaily(v){
   }
 
   paintCal();paintList();
+  attachDrag(listEl,'problems',paintList);
 
   listEl.addEventListener('click',e=>{
     const row=e.target.closest('.prow');if(!row)return;
@@ -1473,9 +1587,11 @@ function renderDaily(v){
     e.preventDefault();
     const name=nameInp.value.trim();
     if(!name){nameInp.classList.add('err','shake');setTimeout(()=>nameInp.classList.remove('shake'),450);nameInp.focus();return}
+    const date=$('#fDate',v).value||tk;
     DB.problems.push({id:uid(),num:$('#fNum',v).value.replace(/\D/g,''),name,
       difficulty:$('#fDiff',v).value,topic:$('#fTopic',v).value,
-      date:$('#fDate',v).value||tk,solved:false,notes:'',description:'',code:'',language:'python',hintStage:0});
+      date,solved:false,notes:'',description:'',code:'',language:'python',hintStage:0,
+      order:nextOrder('problems',date)});
     save();nameInp.value='';$('#fNum',v).value='';sugEl.hidden=true;nameInp.focus();
     toast(`Added \u201C${esc(name)}\u201D`);renderApp();
   });
@@ -1574,7 +1690,9 @@ function renderStreak(v){
   function paintList(){
     let items=[...DB.streaks];
     if(filter.streaks)items=items.filter(q=>q.date===filter.streaks);
-    items.sort((a,b)=>a.date===b.date?((+a.num||0)-(+b.num||0)):(a.date<b.date?1:-1));
+    items.sort((a,b)=>a.date===b.date
+      ?(((a.order??0)-(b.order??0))||((+a.num||0)-(+b.num||0)))
+      :(a.date<b.date?1:-1));
     if(!items.length){
       listEl.innerHTML=emptyHTML('flame',filter.streaks?`No streak questions on ${dayLabel(filter.streaks)}`:'No streak questions yet',
         filter.streaks?'Pick another day, or clear the filter to see the full run.':'Log today\u2019s daily challenge — one question a day is all this section asks.');
@@ -1591,6 +1709,7 @@ function renderStreak(v){
   }
 
   paintCal();paintList();
+  attachDrag(listEl,'streaks',paintList);
 
   listEl.addEventListener('click',e=>{
     const row=e.target.closest('.prow');if(!row)return;
@@ -1622,9 +1741,11 @@ function renderStreak(v){
     e.preventDefault();
     const name=nameInp.value.trim();
     if(!name){nameInp.classList.add('err','shake');setTimeout(()=>nameInp.classList.remove('shake'),450);nameInp.focus();return}
+    const date=$('#sDate',v).value||tk;
     DB.streaks.push({id:uid(),num:$('#sNum',v).value.replace(/\D/g,''),name,
       difficulty:$('#sDiff',v).value,topic:$('#sTopic',v).value,
-      date:$('#sDate',v).value||tk,solved:false,notes:'',description:'',code:'',language:'python',hintStage:0});
+      date,solved:false,notes:'',description:'',code:'',language:'python',hintStage:0,
+      order:nextOrder('streaks',date)});
     save();nameInp.value='';$('#sNum',v).value='';sugEl.hidden=true;nameInp.focus();
     toast(`Added \u201C${esc(name)}\u201D to the streak log`);renderApp();
   });
@@ -1695,7 +1816,9 @@ function renderContests(v){
   function paintSessions(){
     let items=[...DB.contests];
     if(filter.contests)items=items.filter(c=>c.date===filter.contests);
-    items.sort((a,b)=>a.date<b.date?1:-1);
+    items.sort((a,b)=>a.date===b.date
+      ?((a.order??0)-(b.order??0))
+      :(a.date<b.date?1:-1));
     if(!items.length){
       listEl.innerHTML=emptyHTML('trophy',filter.contests?`No problems on ${dayLabel(filter.contests)}`:'No contest problems yet',
         filter.contests?'Clear the filter to see the full log.':'Log what you attempted — solved or not, the time data is what improves your pace.');
@@ -1717,6 +1840,7 @@ function renderContests(v){
   }
 
   paintCal();paintSessions();
+  attachDrag(listEl,'contests',paintSessions);
 
   listEl.addEventListener('click',e=>{
     const row=e.target.closest('.prow');if(!row)return;
@@ -1741,8 +1865,10 @@ function renderContests(v){
     e.preventDefault();
     const name=cName.value.trim();
     if(!name){cName.classList.add('err','shake');setTimeout(()=>cName.classList.remove('shake'),450);cName.focus();return}
-    DB.contests.push({id:uid(),name,date:$('#cDate',v).value||todayKey(),minutes:Math.max(0,+$('#cMin',v).value||0),
-      solved:cSolved,notes:'',description:'',code:'',language:'python',hintStage:0});
+    const date=$('#cDate',v).value||todayKey();
+    DB.contests.push({id:uid(),name,date,minutes:Math.max(0,+$('#cMin',v).value||0),
+      solved:cSolved,notes:'',description:'',code:'',language:'python',hintStage:0,
+      order:nextOrder('contests',date)});
     save();cName.value='';$('#cMin',v).value='';cSolved=false;cSolvedBtn.classList.remove('on');cSolvedIc.classList.remove('on');cName.focus();
     toast(`Added \u201C${esc(name)}\u201D to the contest log`);renderApp();
   });
